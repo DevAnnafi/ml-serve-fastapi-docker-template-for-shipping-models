@@ -1,6 +1,6 @@
 """Pydantic schemas for request and response validation."""
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class PredictRequest(BaseModel):
@@ -25,6 +25,8 @@ class PredictResponse(BaseModel):
 
 class HealthResponse(BaseModel):
     """Response schema for the /health endpoint."""
+
+    model_config = ConfigDict(protected_namespaces=())
 
     status: str = Field(..., description="Service status. Always 'ok' when the model is loaded.")
     model_version: str = Field(..., description="HuggingFace model ID currently loaded.")
