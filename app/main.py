@@ -5,9 +5,11 @@ from __future__ import annotations
 import logging
 import os
 import time
+from contextlib import asynccontextmanager
+from typing import AsyncIterator
 
 from fastapi import FastAPI, HTTPException
-from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
+from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
 from starlette.responses import Response
 
 from app.predictor import SentimentPredictor
@@ -17,12 +19,6 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 MODEL_ID = os.getenv("MODEL_ID", "distilbert-base-uncased-finetuned-sst-2-english")
-
-app = FastAPI(
-    title="ml-serve",
-    description="FastAPI template for shipping HuggingFace sentiment models.",
-    version="0.1.0",
-)
 
 # Prometheus metrics
 REQUEST_COUNT = Counter(
@@ -39,17 +35,23 @@ REQUEST_LATENCY = Histogram(
 predictor: SentimentPredictor | None = None
 
 
-@app.on_event("startup")
-async def startup_event() -> None:
-    """Load the model pipeline on startup.
-
-    Runs once when the server starts. Stores the loaded predictor in the
-    module-level ``predictor`` variable so all requests share the same
-    instance.
-    """
+@asynccontextmanager
+async def lifespan(application: FastAPI) -> AsyncIterator[None]:
+    """Load the model on startup; release resources on shutdown."""
     global predictor
     predictor = SentimentPredictor(model_id=MODEL_ID)
     logger.info("Predictor ready.")
+    yield
+    predictor = None
+    logger.info("Predictor released.")
+
+
+app = FastAPI(
+    title="ml-serve",
+    description="FastAPI template for shipping HuggingFace sentiment models.",
+    version="0.1.0",
+    lifespan=lifespan,
+)
 
 
 @app.get("/health", response_model=HealthResponse, tags=["ops"])
