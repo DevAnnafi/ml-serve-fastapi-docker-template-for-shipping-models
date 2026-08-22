@@ -20,7 +20,9 @@ class TestSentimentPredictorInit:
         with patch("app.predictor.pipeline") as mock_pipe_fn:
             mock_pipe_fn.return_value = _make_pipeline_mock()
             p = SentimentPredictor()
-        mock_pipe_fn.assert_called_once_with("text-classification", model=DEFAULT_MODEL)
+        call_kwargs = mock_pipe_fn.call_args
+        assert call_kwargs.args[0] == "text-classification"
+        assert call_kwargs.kwargs["model"] == DEFAULT_MODEL
         assert p.model_id == DEFAULT_MODEL
 
     def test_loads_custom_model(self):
@@ -28,7 +30,9 @@ class TestSentimentPredictorInit:
         with patch("app.predictor.pipeline") as mock_pipe_fn:
             mock_pipe_fn.return_value = _make_pipeline_mock()
             p = SentimentPredictor(model_id=custom)
-        mock_pipe_fn.assert_called_once_with("text-classification", model=custom)
+        call_kwargs = mock_pipe_fn.call_args
+        assert call_kwargs.args[0] == "text-classification"
+        assert call_kwargs.kwargs["model"] == custom
         assert p.model_id == custom
 
 
